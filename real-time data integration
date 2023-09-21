@@ -1,0 +1,61 @@
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.util.Properties;
+
+public class RealTimeDataIntegrationDemo {
+    private static final String KAFKA_BROKER = "localhost:9092"; // Change this to your Kafka broker address
+    private static final String TOPIC = "real-time-data-topic";
+
+    public static void main(String[] args) {
+        // Producer configuration
+        Properties producerProps = new Properties();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKER);
+        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        // Create a Kafka producer
+        KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps);
+
+        // Start producing messages
+        for (int i = 1; i <= 10; i++) {
+            String message = "Message " + i;
+            ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, message);
+
+            // Send the message
+            producer.send(record, (metadata, exception) -> {
+                if (exception == null) {
+                    System.out.println("Message sent successfully to partition " + metadata.partition());
+                } else {
+                    System.err.println("Error sending message: " + exception.getMessage());
+                }
+            });
+        }
+
+        // Close the producer
+        producer.close();
+
+        // Consumer configuration
+        Properties consumerProps = new Properties();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKER);
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "real-time-consumer-group");
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        // Create a Kafka consumer
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
+
+        // Subscribe to the topic
+        consumer.subscribe(java.util.Collections.singletonList(TOPIC));
+
+        // Start consuming messages
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(100); // Poll for new messages
+            for (ConsumerRecord<String, String> record : records) {
+                System.out.println("Received message: " + record.value());
+            }
+        }
+    }
+}
